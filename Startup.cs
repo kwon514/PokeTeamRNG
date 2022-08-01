@@ -33,6 +33,11 @@ namespace poketeam_api
                 options.Version = "V1";
 
             });
+
+            services.AddHttpClient("pokeapi", configureClient: client =>
+            {
+                client.BaseAddress = new Uri("https://pokeapi.co/api/v2/");
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

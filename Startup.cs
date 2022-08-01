@@ -34,9 +34,9 @@ namespace poketeam_api
 
             });
 
-            services.AddHttpClient("pokeapi", configureClient: client =>
+            services.AddHttpClient(Configuration["PokeAPIClientName"], configureClient: client =>
             {
-                client.BaseAddress = new Uri("https://pokeapi.co/api/v2/");
+                client.BaseAddress = new Uri(Configuration["PokeAPIAddress"]);
             });
         }
 

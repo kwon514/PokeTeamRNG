@@ -26,6 +26,13 @@ namespace poketeam_api
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+
+            services.AddSwaggerDocument(options =>
+            {
+                options.DocumentName = "poketeam-api";
+                options.Version = "V1";
+
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -46,6 +53,9 @@ namespace poketeam_api
             {
                 endpoints.MapControllers();
             });
+
+            app.UseOpenApi();
+            app.UseSwaggerUi3();
         }
     }
 }

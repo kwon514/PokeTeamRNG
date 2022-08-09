@@ -26,7 +26,7 @@ namespace poketeam_api.Controllers
         [HttpGet]
         [Route("create")]
         [ProducesResponseType(201)]
-        public async Task<IActionResult> GetPokemonCharacter(String name, int day, int month, int year)
+        public async Task<IActionResult> CreatePokemonTeam(String name, int day, int month, int year)
         {
             if (year <= 0 || month < 1 || month > 12 || day < 1 || day > 31) return BadRequest("The birthdate is invalid (out of range)");
             if (name.Length > 20) return BadRequest("The name is too long (exceeds 20 characters)");
@@ -55,7 +55,9 @@ namespace poketeam_api.Controllers
                 var pokemonteam = new PokemonTeam
                 {
                     Name = name,
-                    Seed = seed,
+                    BirthDay = day,
+                    BirthMonth = month,
+                    BirthYear = year,
                     pokemonOne = pokemonIDs[0],
                     pokemonTwo = pokemonIDs[1],
                     pokemonThree = pokemonIDs[2],
@@ -90,6 +92,102 @@ namespace poketeam_api.Controllers
                                     .ToList();
                 return Ok(query);
             }
+        }
+
+        /// <summary>
+        /// Updates user information
+        /// </summary>
+        /// <param name="Id">Enter the ID of the user you would like to update</param>
+        /// <param name="newName">Enter a new name or leave blank if you do not want to change</param> 
+        /// <param name="newDay">Enter a new birth day or leave blank if you do not want to change</param>
+        /// <param name="newMonth">Enter a new birth month or leave blank if you do not want to change</param>
+        /// <param name="newYear">Enter a new birth year or leave blank if  you do not want to change</param>
+        /// <returns>The updated data for the specified user</returns>
+        [HttpPut]
+        [Route("update")]
+        [ProducesResponseType(201)]
+        public IActionResult EditPokemonTeam(int Id, string newName, int newDay, int newMonth, int newYear)
+        {
+            var options = new DbContextOptionsBuilder<ApiContext>()
+                .UseInMemoryDatabase(databaseName: "Test")
+                .Options;
+
+            using (var context = new ApiContext(options))
+            {
+                try
+                {
+                    var entity = context.PokemonTeam
+                                        .Where(p => p.Id == Id)
+                                        .First();
+
+                    if (newName != null)
+                    {
+                        entity.Name = newName;
+                    }
+                    if (newDay != 0)
+                    {
+                        if (newDay > 0 && newDay <= 31)
+                        {
+                            entity.BirthDay = newDay;
+                        }
+                        else
+                        {
+                            return BadRequest("The birth day is invalid (out of range)");
+                        }
+                    }
+                    if (newMonth != 0)
+                    {
+                        if (newMonth > 0 && newMonth <= 12)
+                        {
+                            entity.BirthMonth = newMonth;
+                        }
+                        else
+                        {
+                            return BadRequest("The birth month is invalid (out of range)");
+                        }
+                    }
+                    if (newYear != 0 && newYear > 0)
+                    {
+                        entity.BirthYear = newYear;
+                    }
+                    else
+                    {
+                        return BadRequest("The birth year is invalid (out of range)");
+                    }
+
+                    context.SaveChanges();
+                    return Created(new Uri("https://google.com"), entity);
+                }
+                catch (InvalidOperationException)
+                {
+                    return BadRequest("Invalid ID");
+                }
+            }
+
+        }
+        /// <summary>
+        /// Deletes a specified user
+        /// </summary>
+        /// <param name="Id">The ID of the user you would like to delete</param>
+        /// <returns>A 204 No Content Response</returns>
+        [HttpDelete]
+        [Route("delete")]
+        [ProducesResponseType(204)]
+        public IActionResult DeletePokemonTeam(int Id)
+        {
+            var options = new DbContextOptionsBuilder<ApiContext>()
+                .UseInMemoryDatabase(databaseName: "Test")
+                .Options;
+
+            using (var context = new ApiContext(options))
+            {
+                var entity = context.PokemonTeam
+                                        .Where(p => p.Id == Id)
+                                        .First();
+                context.Remove(entity);
+                context.SaveChanges();
+            }
+            return NoContent();
         }
 
 

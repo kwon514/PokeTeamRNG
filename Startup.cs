@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace poketeam_api
 {
@@ -38,6 +39,10 @@ namespace poketeam_api
             {
                 client.BaseAddress = new Uri(Configuration["PokeAPIAddress"]);
             });
+
+            services.AddDbContext<ApiContext>(opt => opt.UseInMemoryDatabase("PokeDatabase"));
+
+            services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

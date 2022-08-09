@@ -2,8 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using poketeam_api.DbModels;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace poketeam_api.Controllers
@@ -34,13 +36,6 @@ namespace poketeam_api.Controllers
             int seed = userBirthDay + userBirthMonth + userBirthYear;
             var rand = new Random(seed);
 
-            int pokemonOne = rand.Next(0, 905);
-            int pokemonTwo = rand.Next(0, 905);
-            int pokemonThree = rand.Next(0, 905);
-            int pokemonFour = rand.Next(0, 905);
-            int pokemonFive = rand.Next(0, 905);
-            int pokemonSix = rand.Next(0, 905);
-
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "Test")
                 .Options;
@@ -49,18 +44,13 @@ namespace poketeam_api.Controllers
             {
                 var pokemonteam = new PokemonTeam
                 {
-                    Name = userName,
-                    BirthDay = userBirthDay,
-                    BirthMonth = userBirthMonth,
-                    BirthYear = userBirthYear,
-                    pokemonOne = pokemonOne,
-                    pokemonTwo = pokemonTwo,
-                    pokemonThree = pokemonThree,
-                    pokemonFour = pokemonFour,
-                    pokemonFive = pokemonFive,
-                    pokemonSix = pokemonSix,
+                    name = userName,
+                    birthDay = userBirthDay,
+                    birthMonth = userBirthMonth,
+                    birthYear = userBirthYear,
                 };
                 context.PokemonTeam.Add(pokemonteam);
+                await GetPokemon(pokemonteam);
                 context.SaveChanges();
                 return Created(new Uri("https://localhost:44364/PokeTeam/read?userName=" + userName), pokemonteam);
             };
@@ -83,7 +73,7 @@ namespace poketeam_api.Controllers
             using (var context = new ApiContext(options))
             {
                 var query = context.PokemonTeam
-                                    .Where(p => p.Name == userName)
+                                    .Where(p => p.name == userName)
                                     .ToList();
                 return Ok(query);
             }
@@ -101,7 +91,7 @@ namespace poketeam_api.Controllers
         [HttpPut]
         [Route("update")]
         [ProducesResponseType(201)]
-        public IActionResult EditPokemonTeam(int userId, string newName, int newDay, int newMonth, int newYear)
+        public async Task<IActionResult> EditPokemonTeam(int userId, string newName, int newDay, int newMonth, int newYear)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "Test")
@@ -112,14 +102,14 @@ namespace poketeam_api.Controllers
                 try
                 {
                     var entity = context.PokemonTeam
-                                        .Where(p => p.Id == userId)
+                                        .Where(p => p.id == userId)
                                         .First();
 
                     if (newName != null)
                     {
                         if (newName.Length <= 20)
                         {
-                            entity.Name = newName;
+                            entity.name = newName;
                         }
                         else
                         {
@@ -130,7 +120,7 @@ namespace poketeam_api.Controllers
                     {
                         if (newDay > 0 && newDay <= 31)
                         {
-                            entity.BirthDay = newDay;
+                            entity.birthDay = newDay;
                         }
                         else
                         {
@@ -141,7 +131,7 @@ namespace poketeam_api.Controllers
                     {
                         if (newMonth > 0 && newMonth <= 12)
                         {
-                            entity.BirthMonth = newMonth;
+                            entity.birthMonth = newMonth;
                         }
                         else
                         {
@@ -151,26 +141,18 @@ namespace poketeam_api.Controllers
                     if (newYear != 0)
                     {
                         if (newYear > 0)
-                            entity.BirthYear = newYear;
+                            entity.birthYear = newYear;
                         else
                         {
                             return BadRequest("The birth year is invalid (out of range)");
                         }
                     }
 
-                    int seed = entity.BirthDay + entity.BirthMonth + entity.BirthYear;
-                    var rand = new Random(seed);
 
-                    entity.pokemonOne = rand.Next(0, 905);
-                    entity.pokemonTwo = rand.Next(0, 905);
-                    entity.pokemonThree = rand.Next(0, 905);
-                    entity.pokemonFour = rand.Next(0, 905);
-                    entity.pokemonFive = rand.Next(0, 905);
-                    entity.pokemonSix = rand.Next(0, 905);
-
+                    await GetPokemon(entity);
                     context.SaveChanges();
-                    return Created(new Uri("https://localhost:44364/PokeTeam/read?userName=" + entity.Name), entity);
-                }   
+                    return Created(new Uri("https://localhost:44364/PokeTeam/read?userName=" + entity.name), entity);
+                }
                 catch (InvalidOperationException)
                 {
                     return BadRequest("Invalid ID");
@@ -195,14 +177,13 @@ namespace poketeam_api.Controllers
             using (var context = new ApiContext(options))
             {
                 var entity = context.PokemonTeam
-                                        .Where(p => p.Id == userId)
+                                        .Where(p => p.id == userId)
                                         .First();
                 context.Remove(entity);
                 context.SaveChanges();
             }
             return NoContent();
         }
-
 
         /// <summary />
         public PokeTeamController(IHttpClientFactory clientFactory)
@@ -213,6 +194,39 @@ namespace poketeam_api.Controllers
                 throw new ArgumentNullException(nameof(clientFactory));
             }
             _client = clientFactory.CreateClient("pokeapi");
+        }
+        [HttpGet]
+        [Route("getpokemon")]
+        [ProducesResponseType(200)]
+        public async Task<IActionResult> GetPokemon(PokemonTeam poketeam)
+        {
+            var options = new DbContextOptionsBuilder<ApiContext>()
+                .UseInMemoryDatabase(databaseName: "Test")
+                .Options;
+            using (var context = new ApiContext(options))
+            {
+                int seed = poketeam.birthDay + poketeam.birthMonth + poketeam.birthYear;
+                Random rand = new Random(seed);
+                Pokemon pokemon;
+                var res = new HttpResponseMessage();
+                List<Pokemon> pokeList = new List<Pokemon>();
+
+                for (int i = 0; i < 6; i++)
+                {
+                    res = await _client.GetAsync("pokemon/" + rand.Next(0, 905));
+                    pokemon = await res.Content.ReadAsAsync<Pokemon>();
+                    pokeList.Add(pokemon);
+                }
+                poketeam.pokemonOne = pokeList[0].name;
+                poketeam.pokemonTwo = pokeList[1].name;
+                poketeam.pokemonThree = pokeList[2].name;
+                poketeam.pokemonFour = pokeList[3].name;
+                poketeam.pokemonFive = pokeList[4].name;
+                poketeam.pokemonSix = pokeList[5].name;
+
+                context.SaveChanges();
+                return Ok();
+            }
         }
     }
 }

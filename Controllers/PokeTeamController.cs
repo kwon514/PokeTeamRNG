@@ -17,34 +17,29 @@ namespace poketeam_api.Controllers
         /// <summary>
         /// Determines pokemon team from user's birthday
         /// </summary>
-        /// <param name="name">The user's name</param>
-        /// <param name="day">The user's day of birth, which must be a positive integer between 1 to 31 inclusive</param>
-        /// <param name="month">The user's month of birth, which must be an integer between 1 to 12 inclusive</param>
-        /// <param name="year">The user's year of birth, which must be a positive integer</param>
+        /// <param name="userName">The user's name</param>
+        /// <param name="userBirthDay">The user's day of birth, which must be a positive integer between 1 to 31 inclusive</param>
+        /// <param name="userBirthMonth">The user's month of birth, which must be an integer between 1 to 12 inclusive</param>
+        /// <param name="userBirthYear">The user's year of birth, which must be a positive integer</param>
         /// <returns>The user's details and generated pokemon team ids</returns>
 
         [HttpGet]
         [Route("create")]
         [ProducesResponseType(201)]
-        public async Task<IActionResult> CreatePokemonTeam(String name, int day, int month, int year)
+        public async Task<IActionResult> CreatePokemonTeam(String userName, int userBirthDay, int userBirthMonth, int userBirthYear)
         {
-            if (year <= 0 || month < 1 || month > 12 || day < 1 || day > 31) return BadRequest("The birthdate is invalid (out of range)");
-            if (name.Length > 20) return BadRequest("The name is too long (exceeds 20 characters)");
+            if (userBirthYear <= 0 || userBirthMonth < 1 || userBirthMonth > 12 || userBirthDay < 1 || userBirthDay > 31) return BadRequest("The birthdate is invalid (out of range)");
+            if (userName.Length > 20) return BadRequest("The name is too long (exceeds 20 characters)");
 
-            int[] pokemonIDs = new int[6];
-            int seed = day + month + year;
+            int seed = userBirthDay + userBirthMonth + userBirthYear;
             var rand = new Random(seed);
-            for (int i = 0; i < 6; i++)
-            {
-                pokemonIDs[i] = rand.Next(0, 905);
-            }
 
-            int pokemonOne = pokemonIDs[0];
-            int pokemonTwo = pokemonIDs[1];
-            int pokemonThree = pokemonIDs[2];
-            int pokemonFour = pokemonIDs[3];
-            int pokemonFive = pokemonIDs[4];
-            int pokemonSix = pokemonIDs[5];
+            int pokemonOne = rand.Next(0, 905);
+            int pokemonTwo = rand.Next(0, 905);
+            int pokemonThree = rand.Next(0, 905);
+            int pokemonFour = rand.Next(0, 905);
+            int pokemonFive = rand.Next(0, 905);
+            int pokemonSix = rand.Next(0, 905);
 
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "Test")
@@ -54,32 +49,32 @@ namespace poketeam_api.Controllers
             {
                 var pokemonteam = new PokemonTeam
                 {
-                    Name = name,
-                    BirthDay = day,
-                    BirthMonth = month,
-                    BirthYear = year,
-                    pokemonOne = pokemonIDs[0],
-                    pokemonTwo = pokemonIDs[1],
-                    pokemonThree = pokemonIDs[2],
-                    pokemonFour = pokemonIDs[3],
-                    pokemonFive = pokemonIDs[4],
-                    pokemonSix = pokemonIDs[5],
+                    Name = userName,
+                    BirthDay = userBirthDay,
+                    BirthMonth = userBirthMonth,
+                    BirthYear = userBirthYear,
+                    pokemonOne = pokemonOne,
+                    pokemonTwo = pokemonTwo,
+                    pokemonThree = pokemonThree,
+                    pokemonFour = pokemonFour,
+                    pokemonFive = pokemonFive,
+                    pokemonSix = pokemonSix,
                 };
                 context.PokemonTeam.Add(pokemonteam);
                 context.SaveChanges();
-                return Created(new Uri("https://google.com"), pokemonteam);
+                return Created(new Uri("https://localhost:44364/PokeTeam/read?userName=" + userName), pokemonteam);
             };
         }
 
         /// <summary>
         /// Fetches data for specified user's name
         /// </summary>
-        /// <param name="name">The user's name</param>
+        /// <param name="userName">The user's name</param>
         /// <returns>The fetched data for a specified user</returns>
         [HttpGet]
         [Route("read")]
         [ProducesResponseType(200)]
-        public IActionResult GetPokemonTeam(String name)
+        public IActionResult GetPokemonTeam(String userName)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "Test")
@@ -88,7 +83,7 @@ namespace poketeam_api.Controllers
             using (var context = new ApiContext(options))
             {
                 var query = context.PokemonTeam
-                                    .Where(p => p.Name == name)
+                                    .Where(p => p.Name == userName)
                                     .ToList();
                 return Ok(query);
             }
@@ -97,7 +92,7 @@ namespace poketeam_api.Controllers
         /// <summary>
         /// Updates user information
         /// </summary>
-        /// <param name="Id">Enter the ID of the user you would like to update</param>
+        /// <param name="userId">Enter the ID of the user you would like to update</param>
         /// <param name="newName">Enter a new name or leave blank if you do not want to change</param> 
         /// <param name="newDay">Enter a new birth day or leave blank if you do not want to change</param>
         /// <param name="newMonth">Enter a new birth month or leave blank if you do not want to change</param>
@@ -106,7 +101,7 @@ namespace poketeam_api.Controllers
         [HttpPut]
         [Route("update")]
         [ProducesResponseType(201)]
-        public IActionResult EditPokemonTeam(int Id, string newName, int newDay, int newMonth, int newYear)
+        public IActionResult EditPokemonTeam(int userId, string newName, int newDay, int newMonth, int newYear)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "Test")
@@ -117,12 +112,19 @@ namespace poketeam_api.Controllers
                 try
                 {
                     var entity = context.PokemonTeam
-                                        .Where(p => p.Id == Id)
+                                        .Where(p => p.Id == userId)
                                         .First();
 
                     if (newName != null)
                     {
-                        entity.Name = newName;
+                        if (newName.Length <= 20)
+                        {
+                            entity.Name = newName;
+                        }
+                        else
+                        {
+                            return BadRequest("The name is too long (exceeds 20 characters)");
+                        }
                     }
                     if (newDay != 0)
                     {
@@ -146,18 +148,29 @@ namespace poketeam_api.Controllers
                             return BadRequest("The birth month is invalid (out of range)");
                         }
                     }
-                    if (newYear != 0 && newYear > 0)
+                    if (newYear != 0)
                     {
-                        entity.BirthYear = newYear;
-                    }
-                    else
-                    {
-                        return BadRequest("The birth year is invalid (out of range)");
+                        if (newYear > 0)
+                            entity.BirthYear = newYear;
+                        else
+                        {
+                            return BadRequest("The birth year is invalid (out of range)");
+                        }
                     }
 
+                    int seed = entity.BirthDay + entity.BirthMonth + entity.BirthYear;
+                    var rand = new Random(seed);
+
+                    entity.pokemonOne = rand.Next(0, 905);
+                    entity.pokemonTwo = rand.Next(0, 905);
+                    entity.pokemonThree = rand.Next(0, 905);
+                    entity.pokemonFour = rand.Next(0, 905);
+                    entity.pokemonFive = rand.Next(0, 905);
+                    entity.pokemonSix = rand.Next(0, 905);
+
                     context.SaveChanges();
-                    return Created(new Uri("https://google.com"), entity);
-                }
+                    return Created(new Uri("https://localhost:44364/PokeTeam/read?userName=" + entity.Name), entity);
+                }   
                 catch (InvalidOperationException)
                 {
                     return BadRequest("Invalid ID");
@@ -168,12 +181,12 @@ namespace poketeam_api.Controllers
         /// <summary>
         /// Deletes a specified user
         /// </summary>
-        /// <param name="Id">The ID of the user you would like to delete</param>
+        /// <param name="userId">The ID of the user you would like to delete</param>
         /// <returns>A 204 No Content Response</returns>
         [HttpDelete]
         [Route("delete")]
         [ProducesResponseType(204)]
-        public IActionResult DeletePokemonTeam(int Id)
+        public IActionResult DeletePokemonTeam(int userId)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "Test")
@@ -182,7 +195,7 @@ namespace poketeam_api.Controllers
             using (var context = new ApiContext(options))
             {
                 var entity = context.PokemonTeam
-                                        .Where(p => p.Id == Id)
+                                        .Where(p => p.Id == userId)
                                         .First();
                 context.Remove(entity);
                 context.SaveChanges();

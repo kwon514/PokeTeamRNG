@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using poketeam_api.DbModels;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,9 @@ namespace poketeam_api.Controllers
     public class PokeTeamController : ControllerBase
     {
         private readonly HttpClient _client;
+        private readonly IHostEnvironment hostEnvironment;
+
+
 
         /// <summary>
         /// Determines pokemon team from user's birthday
@@ -37,7 +41,7 @@ namespace poketeam_api.Controllers
             var rand = new Random(seed);
 
             var options = new DbContextOptionsBuilder<ApiContext>()
-                .UseInMemoryDatabase(databaseName: "Test")
+                .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
 
             using (var context = new ApiContext(options))
@@ -67,7 +71,7 @@ namespace poketeam_api.Controllers
         public IActionResult GetPokemonTeam(String userName)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
-                .UseInMemoryDatabase(databaseName: "Test")
+                .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
 
             using (var context = new ApiContext(options))
@@ -94,7 +98,7 @@ namespace poketeam_api.Controllers
         public async Task<IActionResult> EditPokemonTeam(int userId, string newName, int newDay, int newMonth, int newYear)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
-                .UseInMemoryDatabase(databaseName: "Test")
+                .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
 
             using (var context = new ApiContext(options))
@@ -171,16 +175,23 @@ namespace poketeam_api.Controllers
         public IActionResult DeletePokemonTeam(int userId)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
-                .UseInMemoryDatabase(databaseName: "Test")
+                .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
 
             using (var context = new ApiContext(options))
             {
-                var entity = context.PokemonTeam
-                                        .Where(p => p.id == userId)
-                                        .First();
-                context.Remove(entity);
-                context.SaveChanges();
+                try
+                {
+                    var entity = context.PokemonTeam
+                                            .Where(p => p.id == userId)
+                                            .First();
+                    context.Remove(entity);
+                    context.SaveChanges();
+                }
+                catch (InvalidOperationException)
+                {
+                    return BadRequest("Invalid ID");
+                }
             }
             return NoContent();
         }
@@ -201,7 +212,7 @@ namespace poketeam_api.Controllers
         public async Task<IActionResult> GetPokemon(PokemonTeam poketeam)
         {
             var options = new DbContextOptionsBuilder<ApiContext>()
-                .UseInMemoryDatabase(databaseName: "Test")
+                .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
             using (var context = new ApiContext(options))
             {

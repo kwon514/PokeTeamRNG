@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using poketeam_api.DbModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace poketeam_api.Controllers
@@ -18,7 +18,17 @@ namespace poketeam_api.Controllers
         private readonly HttpClient _client;
         private readonly IHostEnvironment hostEnvironment;
 
+        /// <summary />
+        public PokeTeamController(IHttpClientFactory clientFactory, IHostEnvironment hostEnvironment)
 
+        {
+            this.hostEnvironment = hostEnvironment;
+            if (clientFactory == null)
+            {
+                throw new ArgumentNullException(nameof(clientFactory));
+            }
+            _client = clientFactory.CreateClient("pokeapi");
+        }
 
         /// <summary>
         /// Determines pokemon team from user's birthday
@@ -97,6 +107,10 @@ namespace poketeam_api.Controllers
         [ProducesResponseType(201)]
         public async Task<IActionResult> EditPokemonTeam(int userId, string newName, int newDay, int newMonth, int newYear)
         {
+            if (!hostEnvironment.IsDevelopment())
+                return NotFound("You do not have permission to execute this command!"
+);
+
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
@@ -174,6 +188,9 @@ namespace poketeam_api.Controllers
         [ProducesResponseType(204)]
         public IActionResult DeletePokemonTeam(int userId)
         {
+            if (!hostEnvironment.IsDevelopment())
+                return NotFound("You do not have permission to execute this command!");
+
             var options = new DbContextOptionsBuilder<ApiContext>()
                 .UseInMemoryDatabase(databaseName: "PokeDatabase")
                 .Options;
@@ -196,16 +213,6 @@ namespace poketeam_api.Controllers
             return NoContent();
         }
 
-        /// <summary />
-        public PokeTeamController(IHttpClientFactory clientFactory)
-
-        {
-            if (clientFactory == null)
-            {
-                throw new ArgumentNullException(nameof(clientFactory));
-            }
-            _client = clientFactory.CreateClient("pokeapi");
-        }
         [HttpGet]
         [Route("getpokemon")]
         [ProducesResponseType(200)]
